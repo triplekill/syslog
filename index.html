@@ -1,0 +1,182 @@
+<html>
+<head>
+<script type="text/javascript">
+
+function getXmlHttp()
+{
+    var xmlHttp = null;
+    try {
+        // Mozilla, Opera, Safari sowie Internet Explorer (v7)
+        xmlHttp = new XMLHttpRequest();
+    } catch(e) {
+        try {
+            // MS Internet Explorer (v6)
+            xmlHttp = new ActiveXObject("Microsoft.XMLHTTP");
+        } catch(e) {
+            try {
+                // MS Internet Explorer (v5)
+                xmlHttp = new ActiveXObject("Msxml2.XMLHTTP");
+            } catch(e) {
+                xmlHttp  = null;
+            }
+        }
+    }
+    return xmlHttp;
+}
+
+function unpackInt(string, offset) {
+    return (string.charCodeAt(offset) << 24) + (string.charCodeAt(offset+1) << 16) + (string.charCodeAt(offset+2) << 8) + string.charCodeAt(offset+3);
+}
+
+if (xmlHttp = getXmlHttp()) {
+    xmlHttp.open('GET', '/stream', true);
+    var offset = 0;
+    var size = 0;
+
+    xmlHttp.onreadystatechange = function () {
+        if (xmlHttp.responseText && xmlHttp.readyState >= 3 && xmlHttp.status == 200) {
+
+            while (offset + 4 < xmlHttp.responseText.length) {
+
+                size = parseInt(xmlHttp.responseText.substring(offset, offset + 4), 16);
+
+                if (offset + size + 4 > xmlHttp.responseText.length) {
+                    return;
+                }
+                
+                var message =  xmlHttp.responseText.substring(offset + 4, offset + size + 4);
+                offset += size + 4;
+
+                try {
+                    var log_item = eval('(' + message + ')');
+                } catch (e) {
+                    alert("ERROR offset " + offset + " size " + size + " " + message);
+                }
+
+                var div = document.createElement('div');
+                div.setAttribute('class', 'log_item');
+
+                var host = document.createElement('span');
+                host.setAttribute('class', 'host');
+                host.innerHTML = log_item.host;
+
+                var facility = document.createElement('span');
+                facility.setAttribute('class', 'facility');
+                facility.innerHTML = log_item.facility;
+
+                var priority = document.createElement('span');
+                priority.setAttribute('class', 'priority');
+                priority.innerHTML = log_item.priority;
+
+                var message = document.createElement('message');
+                message.setAttribute('class', 'message');
+                message.innerHTML = log_item.message;
+
+                div.appendChild(host);
+                div.appendChild(facility);
+                div.appendChild(priority);
+                div.appendChild(message);
+
+                log = document.getElementById('log');
+                log.insertBefore(div, log.getElementsByTagName('div')[0]);
+
+                var children = log.getElementsByTagName('div');
+                if (children.length > 50) {
+                    log.removeChild(children[children.length-1]);
+                }
+            }
+        }
+    };
+    xmlHttp.send(null);
+}
+
+</script>
+
+<style type="text/css">
+
+.log_item {
+background-color: #eee;
+border: 1px solid #fff;
+width: 100%;
+font-family: monospace;
+}
+
+.host {
+width: 100px;
+display: block;
+float: left;
+}
+
+.facility {
+width: 100px;
+display: block;
+float: left;
+}
+
+.priority {
+width: 100px;
+display: block;
+float: left;
+}
+
+.priority.emerg {
+    color: #f00;
+}
+
+.priority.alert {
+    color: #d00;
+}
+
+.priority.crit {
+    color: #b00;
+}
+
+.priority.err {
+    color: #900;
+}
+
+.priority.warning {
+    color: #700;
+}
+
+.priority.notice {
+    color: #500;
+}
+
+.priority.info {
+    color: #300;
+}
+
+.priority.debug {
+    color: #100;
+}
+
+.host {
+    clear: left;
+}
+
+</style>
+</head>
+<body>
+
+<div id="log">
+
+<!--
+    <div class="log_item">
+    <span class="host crit">127.0.0.1</span>
+    <span class="facility crit">kern</span>
+    <span class="priority crit">crit</span>
+    <span class="message crit">Jan 23 20:42:11 imac sudo[1040]: hpeters : TTY=ttys002 ; PWD=/Users/hpeters/Desktop/deploy ; USER=root ; COMMAND=/usr/bin/python syslogd.py -i 0.0.0.0</span>
+    </div>
+    
+    <div class="log_item">
+    <span class="host crit">127.0.0.1</span>
+    <span class="facility crit">kern</span>
+    <span class="priority crit">crit</span>
+    <span class="message crit">Jan 23 20:42:11 imac sudo[1040]: hpeters : TTY=ttys002 ; PWD=/Users/hpeters/Desktop/deploy ; USER=root ; COMMAND=/usr/bin/python syslogd.py -i 0.0.0.0</span>
+    </div>
+-->
+    
+</div>
+
+</html>
