@@ -37,7 +37,7 @@ if __name__ == "__main__":
         priority = random.randint(0, 7)
         facility = random.randint(0, 23)
         message = ("%06d " % i) + "+" * random.randint(0, 250)
-        syslog_tcp(message, priority, facility)
+        syslog_udp(message, priority, facility)
         time.sleep(0.001)
         i += 1
     # syslog("test", host='localhost')

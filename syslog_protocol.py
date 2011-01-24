@@ -44,30 +44,35 @@ class SyslogProtocol:
 
     @classmethod
     def decode(self, data):
-        if data[2] == ">":
-            return {
-                "facility": SyslogProtocol.facility(int(data[1])),
-                "priority": SyslogProtocol.priority(int(data[1])),
-                "message": data[3:]
-            }
-        elif data[3] == ">":
-            return {
-                "facility": SyslogProtocol.facility(int(data[1:2])),
-                "priority": SyslogProtocol.priority(int(data[1:2])),
-                "message": data[4:]
-            }
-        elif data[4] == ">":
-            return {
-                "facility": SyslogProtocol.facility(int(data[1:3])),
-                "priority": SyslogProtocol.priority(int(data[1:3])),
-                "message": data[5:]
-            }
-        else:
-            return {
-                "facility": "unknown",
-                "priority": "unknown",
-                "message": data
-            }
+        res = []
+        for chunk in data.split("\n"):
+            if not chunk:
+                continue
+
+            if chunk[2] == ">":
+                res.append({
+                    "facility": SyslogProtocol.facility(int(chunk[1])),
+                    "priority": SyslogProtocol.priority(int(chunk[1])),
+                    "message": chunk[3:]
+                })
+            elif chunk[3] == ">":
+                res.append({
+                    "facility": SyslogProtocol.facility(int(chunk[1:2])),
+                    "priority": SyslogProtocol.priority(int(chunk[1:2])),
+                    "message": chunk[4:]
+                })
+            elif chunk[4] == ">":
+                res.append({
+                    "facility": SyslogProtocol.facility(int(chunk[1:3])),
+                    "priority": SyslogProtocol.priority(int(chunk[1:3])),
+                    "message": chunk[5:]
+                })
+            else:
+                res.append({
+                    "facility": "unknown",
+                    "priority": "unknown",
+                    "message": chunk
+                })
         return res
 
     @classmethod
