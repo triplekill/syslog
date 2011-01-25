@@ -22,10 +22,23 @@ from syslog_http import SyslogHTTP
 from syslog_udp import SyslogUDP
 from syslog_tcp import SyslogTCP, SyslogTCPFactory
 
+import lucene
+import sys
+
 if __name__ == "__main__":
+
+    # enable lucene
+    lucene.initVM()
+    lucene_dir = lucene.SimpleFSDirectory(lucene.File("tmp"))
+    lucene_analyzer = lucene.StandardAnalyzer(lucene.Version.LUCENE_30)
     
     # enable HTTP
     http = SyslogHTTP()
+
+    http.lucene_writer = lucene.IndexWriter(lucene_dir, lucene_analyzer, True, lucene.IndexWriter.MaxFieldLength(512))
+    http.lucene_dir = lucene_dir
+    http.lucene_analyzer = lucene_analyzer
+
     site = server.Site(http)
     reactor.listenTCP(8080, site)
 
