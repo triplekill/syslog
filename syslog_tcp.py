@@ -21,7 +21,7 @@ class SyslogTCPFactory(protocol.Factory):
     noisy = 0
     numberConnections = 0
     maxNumberConnections = 256
-            
+
 class SyslogTCP(protocol.Protocol):
     def connectionMade(self):
         self.factory.numberConnections += 1
@@ -32,6 +32,6 @@ class SyslogTCP(protocol.Protocol):
         self.factory.numberConnections -= 1
 
     def dataReceived(self, data):
-        log_item = SyslogProtocol.decode(data)
-        log_item["host"] = self.transport.getPeer()[1]
-        self.queue.append(log_item)
+        for log_item in SyslogProtocol.decode(data):
+            log_item["host"] = self.transport.getPeer().host
+            self.factory.queue.append(log_item)
