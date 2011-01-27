@@ -34,7 +34,7 @@ class SyslogProtocol:
     
     @classmethod
     def facility(self, number):
-        try: return self.FACILITY[number>>3]
+        try: return self.FACILITY[number >> 3]
         except: return "unknown"
 
     @classmethod

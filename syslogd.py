@@ -21,36 +21,33 @@ from twisted.internet import reactor
 from syslog_http import SyslogHTTP
 from syslog_udp import SyslogUDP
 from syslog_tcp import SyslogTCP, SyslogTCPFactory
-
 import lucene
-import sys
 
 if __name__ == "__main__":
 
-    # enable lucene
+    # enable lucene, create index if it doesn't exist, yet
     lucene.initVM()
     lucene_dir = lucene.SimpleFSDirectory(lucene.File("tmp"))
-    lucene_analyzer = lucene.StandardAnalyzer(lucene.Version.LUCENE_30)
+    lucene_analyzer = lucene.SimpleAnalyzer(lucene.Version.LUCENE_30)
+    lucene_writer = lucene.IndexWriter(lucene_dir, lucene_analyzer, lucene.IndexWriter.MaxFieldLength(1024))
     
     # enable HTTP
     http = SyslogHTTP()
-
-    http.lucene_writer = lucene.IndexWriter(lucene_dir, lucene_analyzer, True, lucene.IndexWriter.MaxFieldLength(512))
+    http.lucene_writer = lucene_writer
     http.lucene_dir = lucene_dir
     http.lucene_analyzer = lucene_analyzer
-
     site = server.Site(http)
     reactor.listenTCP(8080, site)
-
+    
     # enable TCP
     tcp = SyslogTCPFactory()
     tcp.protocol = SyslogTCP
     tcp.queue = http
     reactor.listenTCP(514, tcp)
-
+    
     # enable UDP
     udp = SyslogUDP()
     udp.queue = http
     reactor.listenUDP(514, udp)
-
+    
     reactor.run()
