@@ -31,16 +31,6 @@ def syslog_tcp(message, priority=0, facility=0, host='127.0.0.1', port=514):
     sock.send(data)
     sock.close()
 
-# if __name__ == "__main__":
-    # i = 0
-    # while True:
-    #     priority = random.randint(0, 7)
-    #     facility = random.randint(0, 23)
-    #     message = ("%06d " % i) + "+" * random.randint(0, 250)
-    #     syslog_udp(message, priority, facility)
-    #     
-    #     i += 1
-
 import getopt
 
 if __name__ == '__main__':
@@ -73,8 +63,6 @@ if __name__ == '__main__':
         else:
             assert False, "unhandled option"
             
-    print f, p
-
     for i in range(0, c):
         syslog_udp("%d\t%s" % (i, m), p, f, h)
         time.sleep(d)
