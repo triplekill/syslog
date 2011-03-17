@@ -46,13 +46,12 @@ class SyslogHTTP(resource.Resource):
         if message["message"]:
             
             # add to disk-based search index
-            now = time.time()
-            message["datetime"] = datetime.datetime.fromtimestamp(now).strftime('%Y-%m-%d %H:%M:%S')
-            
+            message["datetime"] = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+            print message["datetime"]
+
             doc = lucene.Document()
             doc.add(lucene.Field("host", message["host"], lucene.Field.Store.YES, lucene.Field.Index.NOT_ANALYZED))
-            doc.add(lucene.NumericField("ts", lucene.Field.Store.NO, True).setFloatValue(now))
-            doc.add(lucene.Field("datetime", message["datetime"], lucene.Field.Store.YES, lucene.Field.Index.NOT_ANALYZED))
+            doc.add(lucene.NumericField("datetime").setLongValue(message["datetime"]))
             doc.add(lucene.Field("message", message["message"], lucene.Field.Store.YES, lucene.Field.Index.ANALYZED))
             doc.add(lucene.Field("facility", message["facility"], lucene.Field.Store.YES, lucene.Field.Index.NOT_ANALYZED))
             doc.add(lucene.Field("priority", message["priority"], lucene.Field.Store.YES, lucene.Field.Index.NOT_ANALYZED))
@@ -89,7 +88,7 @@ class SyslogHTTP(resource.Resource):
                 lucene_searcher = lucene.IndexSearcher(self.lucene_writer.getReader())
                 parser = lucene.MultiFieldQueryParser(lucene.Version.LUCENE_30, ["host", "message", "facility", "priority"], self.lucene_analyzer)
                 query = lucene.MultiFieldQueryParser.parse(parser, self.q)
-                hits = lucene_searcher.search(query, None, self.items_per_page, lucene.Sort(lucene.SortField("ts", lucene.SortField.FLOAT)))
+                hits = lucene_searcher.search(query, None, self.items_per_page, lucene.Sort(lucene.SortField("datetime", lucene.SortField.INTEGER)))
 
                 for hit in hits.scoreDocs:
                     document = lucene_searcher.doc(hit.doc)

@@ -28,7 +28,7 @@ if __name__ == "__main__":
     # enable lucene, create index if it doesn't exist, yet
     lucene.initVM()
     lucene_dir = lucene.SimpleFSDirectory(lucene.File("tmp"))
-    lucene_analyzer = lucene.SimpleAnalyzer(lucene.Version.LUCENE_30)
+    lucene_analyzer = lucene.WhitespaceAnalyzer(lucene.Version.LUCENE_30)
     lucene_writer = lucene.IndexWriter(lucene_dir, lucene_analyzer, lucene.IndexWriter.MaxFieldLength(1024))
     
     # enable HTTP
