@@ -23,11 +23,10 @@ from syslog_udp import SyslogUDP
 from syslog_tcp import SyslogTCP, SyslogTCPFactory
 
 import lucene
-from AnalyzerUtils import *
 
 syslog_udp_port = 514
 syslog_tcp_port = 514
-syslog_http_port = 8080
+syslog_http_port = 80
 
 if __name__ == "__main__":
 
