@@ -20,6 +20,7 @@ import socket, sys, random, time
 
 def syslog_udp(message, priority=0, facility=0, host='127.0.0.1', port=514):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    print "syslog_udp " + message
     data = SyslogProtocol.encode(facility, priority, message)
     sock.sendto(data, (host, port))
     sock.close()
@@ -32,6 +33,9 @@ def syslog_tcp(message, priority=0, facility=0, host='127.0.0.1', port=514):
     sock.close()
 
 import getopt
+
+def usage():
+    print 'usage: %s [-f <facility>] [-p <priority>] [-c <count>] [-d <delay>] [-h <host>] -m <message>'
 
 if __name__ == '__main__':
     try:
@@ -62,7 +66,10 @@ if __name__ == '__main__':
             h = a
         else:
             assert False, "unhandled option"
-            
+
+    if not m:
+        usage()
+
     for i in range(0, c):
-        syslog_udp("%d\t%s" % (i, m), p, f, h)
+        syslog_udp("%d\t%s" % (i, m), p, f, h, 5140)
         time.sleep(d)
