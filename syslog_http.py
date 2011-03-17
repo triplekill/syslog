@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import json, random, string, time, datetime
+import json, random, string, time, datetime, os
 from twisted.web import server, resource
 import lucene
 
@@ -24,6 +24,25 @@ class SyslogHTTP(resource.Resource):
     isLeaf = True
     clients = []
     q = None
+    
+    # log fall-back
+    log_filename = None
+    log_handle = None
+
+    def log_get_filename(self):
+        return 'tmp/log_%s' % datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d')
+        
+    def log_init_handle(self):
+        current_filename = self.log_get_filename()
+        if not self.log_filename or self.log_filename != current_filename:
+            if self.log_handle:
+                self.log_handle.close()
+            self.log_handle = open(self.log_get_filename(), 'a')
+            self.log_filename = current_filename
+    
+    def log_append(self, string):
+        self.log_init_handle()
+        self.log_handle.write(string + '\n')
     
     def send_data(self, request, data):
         size = len(data)
@@ -42,6 +61,15 @@ class SyslogHTTP(resource.Resource):
         }
         self.send_data(request, json.dumps(data))
 
+    def tokenize(self, string):
+        tokens = set([])
+        if string:
+            tokenStream = self.lucene_analyzer.tokenStream("contents", lucene.StringReader(string))
+            term = tokenStream.addAttribute(lucene.TermAttribute.class_)
+            while tokenStream.incrementToken():
+                tokens.add(term.term())
+        return tokens
+
     def append(self, message):
         if message["message"]:
             
@@ -55,6 +83,11 @@ class SyslogHTTP(resource.Resource):
             doc.add(lucene.Field("message", message["message"], lucene.Field.Store.YES, lucene.Field.Index.ANALYZED))
             doc.add(lucene.Field("facility", message["facility"], lucene.Field.Store.YES, lucene.Field.Index.NOT_ANALYZED))
             doc.add(lucene.Field("priority", message["priority"], lucene.Field.Store.YES, lucene.Field.Index.NOT_ANALYZED))
+
+            # write to logfile
+            self.log_append(str(message))
+
+            # write to index
             self.lucene_writer.addDocument(doc)
             
             # serve to clients
@@ -62,7 +95,14 @@ class SyslogHTTP(resource.Resource):
                 self.lucene_writer.commit()
 
             for client in self.clients:
-                if not self.q or (self.q and self.q in message["host"] or self.q in message["message"] or self.q in message["facility"] or self.q in message["priority"]):
+                doc_tokens = self.tokenize(message["message"])
+                doc_tokens = doc_tokens.union(set([message["host"], message["facility"], message["priority"]]))
+
+                query_tokens = self.tokenize(self.q)
+                matching_tokens = query_tokens.intersection(doc_tokens)
+                
+                # update client when query is empty or when a query_token matches a doc_token
+                if not self.q or matching_tokens:
                     self.send_data(client, json.dumps(message))
 
     def connectionLost(self, err, request):
@@ -71,7 +111,6 @@ class SyslogHTTP(resource.Resource):
     def get_argument(self, arg, request):
         if request.args.has_key(arg):
             return request.args[arg][0].strip()
-    
 
     def render_GET(self, request):
         if request.path == "/stream":
@@ -84,6 +123,7 @@ class SyslogHTTP(resource.Resource):
             request.setHeader("E-Tag", '"%s"' % ''.join(random.choice(string.letters) for i in xrange(32)))
             
             self.q = self.get_argument('q', request)
+            
             if self.q:
                 lucene_searcher = lucene.IndexSearcher(self.lucene_writer.getReader())
                 parser = lucene.MultiFieldQueryParser(lucene.Version.LUCENE_30, ["host", "message", "facility", "priority"], self.lucene_analyzer)
@@ -114,5 +154,21 @@ class SyslogHTTP(resource.Resource):
                     self.send_document(request, document)
 
             return server.NOT_DONE_YET
+
+        elif request.path == "/log":
+            # request.setHeader('Content-Disposition', 'attachment; filename="syslog.log"')
+            request.setHeader('Content-Type', 'text/plain')
+            self.log_init_handle()
+            self.log_handle.flush()
+            f = None
+            try:
+                f = open(self.log_get_filename())
+            except IOError:
+                return ''
+            lines = f.readlines()
+            f.close()
+            lines.reverse()
+            return ''.join(lines)
+
         else:
             return open("index.html").read()

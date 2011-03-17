@@ -99,13 +99,9 @@ function main()
                     datetime.setAttribute('class', 'datetime');
                     datetime.innerHTML = log_item.datetime;
 
-                    var facility = document.createElement('span');
-                    facility.setAttribute('class', 'facility');
-                    facility.innerHTML = log_item.facility;
-
-                    var priority = document.createElement('span');
-                    priority.setAttribute('class', 'priority');
-                    priority.innerHTML = log_item.priority;
+                    var facility_priority = document.createElement('span');
+                    facility_priority.setAttribute('class', 'facility_priority');
+                    facility_priority.innerHTML = log_item.facility + " " + log_item.priority;
 
                     var message = document.createElement('message');
                     message.setAttribute('class', 'message');
@@ -113,8 +109,7 @@ function main()
 
                     div.appendChild(host);
                     div.appendChild(datetime);
-                    div.appendChild(facility);
-                    div.appendChild(priority);
+                    div.appendChild(facility_priority);
                     div.appendChild(message);
 
                     log.insertBefore(div, log.getElementsByTagName('div')[0]);
@@ -154,47 +149,41 @@ display: block;
 float: left;
 }
 
-.facility {
-width: 100px;
+.facility_priority {
+width: 150px;
 display: block;
 float: left;
 }
 
-.priority {
-width: 100px;
-display: block;
-float: left;
-}
-
-.priority.emerg {
+.emerg {
     color: #f00;
 }
 
-.priority.alert {
+.alert {
     color: #d00;
 }
 
-.priority.crit {
+.crit {
     color: #b00;
 }
 
-.priority.err {
+.err {
     color: #900;
 }
 
-.priority.warning {
+.warning {
     color: #700;
 }
 
-.priority.notice {
+.notice {
     color: #500;
 }
 
-.priority.info {
+.info {
     color: #300;
 }
 
-.priority.debug {
+.debug {
     color: #100;
 }
 
@@ -211,6 +200,9 @@ float: left;
 </head>
 <body onload="main()">
 
+<a href="/">Home</a>
+<a href="/log">Log</a>
+
 <form action="/" method="GET">
 <input id="q" type="text" name="q" spellcheck="false" onkeyup="if (event.keyCode == 27 /* ESC */) { this.value = ''; this.form.submit() }" />
 </form>
@@ -220,15 +212,13 @@ float: left;
 <!--
     <div class="log_item">
     <span class="host crit">127.0.0.1</span>
-    <span class="facility crit">kern</span>
-    <span class="priority crit">crit</span>
+    <span class="facility_priority crit">kern crit</span>
     <span class="message crit">Jan 23 20:42:11 imac sudo[1040]: test</span>
     </div>
     
     <div class="log_item">
     <span class="host crit">127.0.0.1</span>
-    <span class="facility crit">kern</span>
-    <span class="priority crit">crit</span>
+    <span class="facility_priority crit">kern crit</span>
     <span class="message crit">Jan 23 20:42:11 imac sudo[1040]: test</span>
     </div>
 -->

@@ -21,7 +21,12 @@ from twisted.internet import reactor
 from syslog_http import SyslogHTTP
 from syslog_udp import SyslogUDP
 from syslog_tcp import SyslogTCP, SyslogTCPFactory
+
 import lucene
+
+syslog_udp_port = 514
+syslog_tcp_port = 514
+syslog_http_port = 80
 
 if __name__ == "__main__":
 
@@ -30,24 +35,27 @@ if __name__ == "__main__":
     lucene_dir = lucene.SimpleFSDirectory(lucene.File("tmp"))
     lucene_analyzer = lucene.WhitespaceAnalyzer(lucene.Version.LUCENE_30)
     lucene_writer = lucene.IndexWriter(lucene_dir, lucene_analyzer, lucene.IndexWriter.MaxFieldLength(1024))
-    
+
     # enable HTTP
     http = SyslogHTTP()
     http.lucene_writer = lucene_writer
     http.lucene_dir = lucene_dir
     http.lucene_analyzer = lucene_analyzer
     site = server.Site(http)
-    reactor.listenTCP(8080, site)
-    
+    reactor.listenTCP(syslog_http_port, site)
+    print "listening for syslog on UDP port %d" % syslog_udp_port
+
     # enable TCP
     tcp = SyslogTCPFactory()
     tcp.protocol = SyslogTCP
     tcp.queue = http
-    reactor.listenTCP(514, tcp)
-    
+    reactor.listenTCP(syslog_tcp_port, tcp)
+    print "listening for syslog on TCP port %d" % syslog_tcp_port
+
     # enable UDP
     udp = SyslogUDP()
     udp.queue = http
-    reactor.listenUDP(514, udp)
-    
+    reactor.listenUDP(syslog_udp_port, udp)
+    print "listening for HTTP on port %d" % syslog_http_port
+
     reactor.run()
