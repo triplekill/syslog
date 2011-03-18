@@ -71,5 +71,5 @@ if __name__ == '__main__':
         usage()
 
     for i in range(0, c):
-        syslog_udp("%d\t%s" % (i, m), p, f, h, 5140)
+        syslog_udp("%s (%d)" % (m, i), p, f, h, 5140)
         time.sleep(d)

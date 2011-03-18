@@ -45,11 +45,14 @@ class SyslogHTTP(resource.Resource):
         self.log_handle.write(string + '\n')
     
     def send_data(self, request, data):
-        size = len(data)
+        dt = data['datetime']
+        
+        json_data = json.dumps(data)
+        size = len(json_data)
         if size == 0 or size > 0xffff:
             return
         else:
-            request.write("%04x%s" % (size, data))
+            request.write("%04x%s" % (size, json_data))
 
     def send_document(self, request, document):
         data = {
@@ -59,7 +62,7 @@ class SyslogHTTP(resource.Resource):
             "message": document.get("message").encode("utf-8"),
             "priority": document.get("priority").encode("utf-8")
         }
-        self.send_data(request, json.dumps(data))
+        self.send_data(request, data)
 
     def tokenize(self, string):
         tokens = set([])
@@ -70,22 +73,21 @@ class SyslogHTTP(resource.Resource):
                 tokens.add(term.term())
         return tokens
 
-    def append(self, message):
-        if message["message"]:
-            
-            # add to disk-based search index
-            message["datetime"] = int(datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
-            print message["datetime"]
+    def append(self, data):
+        if data["message"]:
+
+            # current time is considered more precise than one contained in the message
+            data["datetime"] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
 
             doc = lucene.Document()
-            doc.add(lucene.Field("host", message["host"], lucene.Field.Store.YES, lucene.Field.Index.NOT_ANALYZED))
-            doc.add(lucene.NumericField("datetime").setLongValue(message["datetime"]))
-            doc.add(lucene.Field("message", message["message"], lucene.Field.Store.YES, lucene.Field.Index.ANALYZED))
-            doc.add(lucene.Field("facility", message["facility"], lucene.Field.Store.YES, lucene.Field.Index.NOT_ANALYZED))
-            doc.add(lucene.Field("priority", message["priority"], lucene.Field.Store.YES, lucene.Field.Index.NOT_ANALYZED))
+            doc.add(lucene.Field("host", data["host"], lucene.Field.Store.YES, lucene.Field.Index.NOT_ANALYZED))
+            doc.add(lucene.NumericField("datetime", lucene.Field.Store.YES, True).setLongValue(long(data["datetime"])))
+            doc.add(lucene.Field("facility", data["facility"], lucene.Field.Store.YES, lucene.Field.Index.NOT_ANALYZED))
+            doc.add(lucene.Field("priority", data["priority"], lucene.Field.Store.YES, lucene.Field.Index.NOT_ANALYZED))
+            doc.add(lucene.Field("message", data["message"], lucene.Field.Store.YES, lucene.Field.Index.ANALYZED))
 
             # write to logfile
-            self.log_append(str(message))
+            self.log_append(str(data))
 
             # write to index
             self.lucene_writer.addDocument(doc)
@@ -95,15 +97,15 @@ class SyslogHTTP(resource.Resource):
                 self.lucene_writer.commit()
 
             for client in self.clients:
-                doc_tokens = self.tokenize(message["message"])
-                doc_tokens = doc_tokens.union(set([message["host"], message["facility"], message["priority"]]))
+                doc_tokens = self.tokenize(data["message"])
+                doc_tokens = doc_tokens.union(set([data["host"], data["facility"], data["priority"]]))
 
                 query_tokens = self.tokenize(self.q)
                 matching_tokens = query_tokens.intersection(doc_tokens)
                 
                 # update client when query is empty or when a query_token matches a doc_token
                 if not self.q or matching_tokens:
-                    self.send_data(client, json.dumps(message))
+                    self.send_data(client, data)
 
     def connectionLost(self, err, request):
         self.clients.remove(request)
@@ -128,7 +130,9 @@ class SyslogHTTP(resource.Resource):
                 lucene_searcher = lucene.IndexSearcher(self.lucene_writer.getReader())
                 parser = lucene.MultiFieldQueryParser(lucene.Version.LUCENE_30, ["host", "message", "facility", "priority"], self.lucene_analyzer)
                 query = lucene.MultiFieldQueryParser.parse(parser, self.q)
-                hits = lucene_searcher.search(query, None, self.items_per_page, lucene.Sort(lucene.SortField("datetime", lucene.SortField.INTEGER)))
+                filter = None
+                # filter = lucene.NumericRangeFilter.newLongRange("datetime", lucene.Long(long(20110318012732)), lucene.Long(long(20110318012732)), True, True)
+                hits = lucene_searcher.search(query, filter, self.items_per_page, lucene.Sort(lucene.SortField("datetime", lucene.SortField.LONG)))
 
                 for hit in hits.scoreDocs:
                     document = lucene_searcher.doc(hit.doc)
