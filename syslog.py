@@ -35,11 +35,11 @@ def syslog_tcp(message, priority=0, facility=0, host='127.0.0.1', port=514):
 import getopt
 
 def usage():
-    print 'usage: %s [-f <facility>] [-p <priority>] [-c <count>] [-d <delay>] [-h <host>] -m <message>'
+    print 'usage: %s [-t [udp|tcp]] [-f <facility>] [-p <priority>] [-c <count>] [-d <delay>] [-h <host>[:<port>]] -m <message>' % sys.argv[0]
 
 if __name__ == '__main__':
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "f:p:m:c:d:h:")
+        opts, args = getopt.getopt(sys.argv[1:], "t:f:p:m:c:d:h:")
     except getopt.GetoptError, err:
         print str(err) # will print something like "option -a not recognized"
         sys.exit(2)
@@ -50,9 +50,16 @@ if __name__ == '__main__':
     c = 1 # count
     d = 0.01 # delay
     h = '127.0.0.1' # host
+    port = 5140
+    syslog_fn = syslog_udp
 
     for o, a in opts:
-        if o == "-f":
+        if o == "-t":
+            if a == 'udp':
+                syslog_fn = syslog_udp
+            elif a == 'tcp':
+                syslog_fn = syslog_tcp
+        elif o == "-f":
             f = int(a)
         elif o == "-p":
             p = int(a)
@@ -63,13 +70,18 @@ if __name__ == '__main__':
         elif o == "-d":
             d = float(a)
         elif o == "-h":
-            h = a
+            if a.find(':'):
+              h, port = a.split(':')
+              port = int(port)
+            else:
+              h = a
         else:
             assert False, "unhandled option"
 
     if not m:
         usage()
+        sys.exit(-1)
 
     for i in range(0, c):
-        syslog_udp("%s (%d)" % (m, i), p, f, h, 5140)
+        syslog_fn("%s (%d)" % (m, i), p, f, h, port)
         time.sleep(d)
