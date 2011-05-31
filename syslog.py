@@ -22,14 +22,15 @@ def syslog_udp(message, priority=0, facility=0, host='127.0.0.1', port=514):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     print "syslog_udp " + message
     data = SyslogProtocol.encode(facility, priority, message)
-    sock.sendto(data, (host, port))
+    sock.sendto(data + '\n', (host, port))
     sock.close()
 
 def syslog_tcp(message, priority=0, facility=0, host='127.0.0.1', port=514):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print "syslog_tcp " + message
     sock.connect((host, port))
     data = SyslogProtocol.encode(facility, priority, message)
-    sock.send(data)
+    sock.send(data + '\n')
     sock.close()
 
 import getopt
