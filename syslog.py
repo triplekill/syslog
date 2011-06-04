@@ -27,7 +27,6 @@ def syslog_udp(message, priority=0, facility=0, host='127.0.0.1', port=514):
 
 def syslog_tcp(message, priority=0, facility=0, host='127.0.0.1', port=514):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    print "syslog_tcp " + message
     sock.connect((host, port))
     print "syslog_tcp " + message
     data = SyslogProtocol.encode(facility, priority, message)
