@@ -23,6 +23,11 @@ class SyslogProtocol:
         4: "warning", 5: "notice", 6: "info", 7: "debug"
     }
 
+    PRIORITY_REVERSE = {
+        "emerg": 0, "alert": 1, "crit": 2, "err": 3,
+        "warning": 4, "notice": 5, "info": 6, "debug": 7
+    }
+
     FACILITY = {
         0: "kern", 1: "user", 2: "mail", 3: "daemon",
         4: "auth", 5: "syslog", 6: "lpr", 7: "news",

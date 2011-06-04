@@ -1,5 +1,8 @@
 <html>
 <head>
+    
+<script type="text/javascript" src="/raphael.js"></script>
+    
 <script type="text/javascript">
 
 function getXmlHttp()
@@ -41,9 +44,279 @@ function get_param(variable)
     }
 }
 
+
+
+
+// function TimestampCell(canvas, x, y, w, h) {
+//     // private
+//     var cell = 
+//     
+// 
+// 
+//     var values;
+//     var maxValue;
+// 
+//     return {
+//         // public
+//         setMaxValue: function(v) {
+//             maxValue = v;
+//         },
+//         
+//         setValues: function(v) {
+//             values = v;
+//             this.draw();
+//         },
+//         
+//         draw: function() {
+//             var y = 0;
+//             for(var i=0; i<values.length; ++i) {
+//                 var top = h - (values[i] / value_max) * h;
+//                 var bar_height = h - top;
+// 
+//                 var bar = canvas.rect(x, top - y, w, bar_height);
+//                 bar.attr("fill", colors[i]);
+//                 bar.attr("stroke-opacity", 0);
+// 
+//                 y += bar_height;
+//             }
+//         },
+//         
+//         mouseover: function() {
+//             cell.attr({fill: "rgba(200, 200, 200, 0.5)"});
+//         },
+// 
+//         mouseout: function() {
+//             this.attr({fill: "rgba(255, 255, 255, 0.0)"});
+//         }
+//     }
+// }
+
+
+
+function TimestampUI(timestamps, id, width, height) {
+    // private
+    var node = document.getElementById(id);
+    var canvas = Raphael(node, width, height);
+    
+    // retrieve pixel dimensions in case width/height was supplied with percentages
+    width = document.getElementById(id).offsetWidth;
+    height = document.getElementById(id).offsetHeight;
+    
+    var colors = new Array('rgb(255, 39, 34)', 'rgb(203, 31, 112)', 'rgb(198, 29, 191)', 'rgb(118, 26, 193)', 'rgb(33, 23, 188)', 'rgb(20, 91, 183)', 'rgb(18, 165, 178)', 'rgb(16, 173, 108)');
+    
+    function xOffsetLeft(i) {
+        return width - (i + 1.0) * (width / timestamps.cells.length);
+    }
+
+    function xOffsetMiddle(i) {
+        return width - (i + 0.5) * (width / timestamps.cells.length);
+    }
+
+    function xOffsetRight(i) {
+        return width - (i + 0.0) * (width / timestamps.cells.length);
+    }
+    
+    function getIndex(x) {
+        var diff = width / timestamps.cells.length;
+        return Math.floor((width - x) / diff);
+    }
+
+    return {
+        // public
+        handles: Array(2),
+        handleCells: Array(),
+        activeHandle: 0,
+        
+        remove: function() {
+            canvas.remove();
+        },
+        
+        clear: function() {
+            canvas.clear();
+            canvas.rect(0, 0, width, height);
+        },
+        
+        setHandles: function(index) {
+            for(var i=0; i<this.handleCells.length; ++i) {
+                this.handleCells[i].hide();
+            }
+            
+            this.handles[this.activeHandle] = index;
+
+            if (this.handles[0] && this.handles[1]) {
+                var left = Math.min(this.handles[0], this.handles[1]);
+                var right = this.handles.length - left;
+            } else {
+                var left = this.handles[0];
+                var right = this.handles[0];
+            }
+            
+            for(var i=left; i<=right; ++i) {
+                this.handleCells[i].show();
+            }
+        },
+        
+        update: function() {
+            this.clear();
+            for(var i=0; i<timestamps.cells.length; ++i) {
+                if (!timestamps.cells[i]) continue;
+
+                var values = timestamps.cells[i].values;
+                
+                var y = 0;
+                for(var j=0; j<values.length; ++j) {
+                    var h = values[j] * height;
+                    var bar = canvas.rect(xOffsetLeft(i), height - h - y, xOffsetRight(i) - xOffsetLeft(i), h);
+                    bar.attr("fill", colors[j]);
+                    bar.attr("stroke-opacity", 0);
+                    y += h;
+                }
+            }
+
+            this.handleCells = new Array();
+            for(var i=0; i<timestamps.cells.length; ++i) {
+                var handleCell = canvas.rect(xOffsetLeft(i), 0, xOffsetRight(i) - xOffsetLeft(i), height);
+                handleCell.attr("fill", 'rgba(200, 200, 200, 0.5)');
+                handleCell.attr("stroke-opacity", 0);
+                handleCell.hide();
+                this.handleCells[i] = handleCell;
+            }
+
+            // add overlay to capture events
+            var overlay = canvas.rect(0, 0, width, height);
+            overlay.attr("fill", 'rgba(255, 255, 255, 0)');
+            obj = this;
+            
+            overlay.mousemove(function(event) {
+                console.log('mousemove', event.offsetX);
+                obj.setHandles(getIndex(event.offsetX));
+            });
+
+            overlay.mousedown(function(event) {
+                console.log('mousedown', event.offsetX);
+                obj.activeHandle = 1;
+                obj.setHandles(getIndex(event.offsetX));
+            });
+
+            overlay.mouseout(function(event) {
+                console.log('mouseout', event.offsetX);
+                obj.activeHandle = 0;
+                obj.handles = new Array();
+            });
+
+            overlay.mouseup(function(event) {
+                console.log('mouseup', event.offsetX);
+                obj.activeHandle = 0;
+                obj.handles = new Array();
+            });
+        }
+    }
+}
+
+function TimestampMessage(m) {
+    // private
+    return {
+        // public
+        timestamp: m.timestamp,
+        values: m.values,
+        
+        isValid: function() {
+            if (m.type != 'timestamp' || !m.values) {
+                return false;
+            }
+            return true;
+        },
+        
+        getValueSum: function() {
+            var sum = 0;
+            for(var i=0; i<this.values.length; ++i) {
+                sum += this.values[i];
+            }
+            return sum;
+        }
+    }
+}
+
+function TimestampCell(message) {
+    // private
+    
+    return {
+        // public
+        message: message,
+        values: new Array(message.values.length),
+        
+        adjust: function(maxValueSum) {
+            for (var i=0; i<message.values.length; ++i) {
+                this.values[i] = message.values[i] / maxValueSum;
+            }
+        }
+    }
+}
+
+function Timestamps(start, end, num) {
+    // private
+    if (end <= start) {
+        alert('end must be greater than start');
+        return;
+    }
+
+    function getIndex(ts) {
+        var diff = (end - start) / num;
+        return Math.floor((ts - start) / diff);
+    }
+
+    return {
+        // public
+        cells: new Array(num),
+
+        add: function(message) {
+            if (message.timestamp < start || message.timestamp > end) {
+                alert('timestamp not in correct interval: ' + message.timestamp);
+                return;
+            }
+            
+            var index = getIndex(message.timestamp);
+            this.cells[index] = new TimestampCell(message);
+            
+            var tmp = this.maxValueSum();
+            for (var i=0; i<this.cells.length; ++i) {
+                if (this.cells[i]) {
+                    this.cells[i].adjust(tmp);
+                }
+            }
+        },
+
+        maxValueSum: function() {
+            var maxValueSum = 0;
+            for(var i=0; i<this.cells.length; ++i) {
+                if (this.cells[i]) {
+                    var tmp = this.cells[i].message.getValueSum();
+                    if (tmp > maxValueSum) {
+                        maxValueSum = tmp;
+                    }
+                }
+            }
+            return maxValueSum;
+        }
+    };
+}
+
+
+var globalTimestamps;
+var globalTimestampUI;
+
 function main()
 {
     document.getElementById("q").focus();
+
+    globalTimestamps = new Timestamps(20110301, 20110331, 31);
+    globalTimestampUI = new TimestampUI(globalTimestamps, 'timestamps', '100%', 100);
+
+    window.onresize = function() {
+        globalTimestampUI.remove();
+        globalTimestampUI = new TimestampUI(globalTimestamps, 'timestamps', '100%', 100);
+        globalTimestampUI.update();
+    }
 
     if (xmlHttp = getXmlHttp()) {
 
@@ -61,10 +334,11 @@ function main()
 
         xmlHttp.onreadystatechange = function()
         {
-            var log = document.getElementById('log');
+            var documents = document.getElementById('documents');
+            var timestamps = document.getElementById('timestamps');
 
             if (xmlHttp.responseText && xmlHttp.readyState >= 3 && xmlHttp.status == 200) {
-
+                
                 while (offset + 4 <= xmlHttp.responseText.length) {
 
                     size = parseInt(xmlHttp.responseText.substring(offset, offset + 4), 16);
@@ -77,46 +351,60 @@ function main()
 
                     offset += size + 4;
 
-                    if (size == 0) {
-                        log.innerHTML = ""; // clear screen
+                    if (size == 0) { // clear screen
+                        documents.innerHTML = ""; 
+                        timestamps.innerHTML = "";
                         continue;
                     }
 
                     try {
-                        var log_item = eval('(' + message + ')');
+                        var item = eval('(' + message + ')');
                     } catch (e) {
                         alert("ERROR offset " + offset + " size " + size + " " + message);
                     }
 
-                    var div = document.createElement('div');
-                    div.setAttribute('class', 'log_item');
+                    if (item.type == 'document') {
 
-                    var host = document.createElement('span');
-                    host.setAttribute('class', 'host');
-                    host.innerHTML = log_item.host;
+                        var div = document.createElement('div');
+                        div.setAttribute('class', 'document_item');
+                        
+                        var host = document.createElement('span');
+                        host.setAttribute('class', 'host');
+                        host.innerHTML = item.host;
+                        
+                        var timestamp = document.createElement('span');
+                        timestamp.setAttribute('class', 'timestamp');
+                        timestamp.innerHTML = item.timestamp;
+                        
+                        var facility_priority = document.createElement('span');
+                        facility_priority.setAttribute('class', 'facility_priority');
+                        facility_priority.innerHTML = item.facility + " " + item.priority;
+                        
+                        var message = document.createElement('message');
+                        message.setAttribute('class', 'message');
+                        message.innerHTML = item.message;
+                        
+                        div.appendChild(host);
+                        div.appendChild(timestamp);
+                        div.appendChild(facility_priority);
+                        div.appendChild(message);
+                        
+                        documents.insertBefore(div, documents.getElementsByTagName('div')[0]);
+                        
+                        var children = documents.getElementsByTagName('div');
+                        if (children.length > 50) {
+                            documents.removeChild(children[children.length-1]);
+                        }
 
-                    var datetime = document.createElement('span');
-                    datetime.setAttribute('class', 'datetime');
-                    datetime.innerHTML = log_item.datetime;
-
-                    var facility_priority = document.createElement('span');
-                    facility_priority.setAttribute('class', 'facility_priority');
-                    facility_priority.innerHTML = log_item.facility + " " + log_item.priority;
-
-                    var message = document.createElement('message');
-                    message.setAttribute('class', 'message');
-                    message.innerHTML = log_item.message;
-
-                    div.appendChild(host);
-                    div.appendChild(datetime);
-                    div.appendChild(facility_priority);
-                    div.appendChild(message);
-
-                    log.insertBefore(div, log.getElementsByTagName('div')[0]);
-
-                    var children = log.getElementsByTagName('div');
-                    if (children.length > 50) {
-                        log.removeChild(children[children.length-1]);
+                    } else if (item.type == 'timestamp') {
+                        message = new TimestampMessage(item);
+                        if (message.isValid()) {
+                            globalTimestamps.add(message);
+                            globalTimestampUI.update();
+                        } else {
+                            console.log('timestamp invalid');
+                            console.log(message);
+                        }
                     }
                 }
             }
@@ -129,7 +417,11 @@ function main()
 
 <style type="text/css">
 
-.log_item {
+html {
+    overflow-y: scroll;
+}
+
+.document_item {
 background-color: #eee;
 border: 1px solid #fff;
 width: 100%;
@@ -143,7 +435,7 @@ float: left;
 clear: left;
 }
 
-.datetime {
+.timestamp {
 width: 200px;
 display: block;
 float: left;
@@ -207,22 +499,9 @@ float: left;
 <input id="q" type="text" name="q" spellcheck="false" onkeyup="if (event.keyCode == 27 /* ESC */) { this.value = ''; this.form.submit() }" />
 </form>
 
-<div id="log">
+<div id="timestamps"></div>
 
-<!--
-    <div class="log_item">
-    <span class="host crit">127.0.0.1</span>
-    <span class="facility_priority crit">kern crit</span>
-    <span class="message crit">Jan 23 20:42:11 imac sudo[1040]: test</span>
-    </div>
-    
-    <div class="log_item">
-    <span class="host crit">127.0.0.1</span>
-    <span class="facility_priority crit">kern crit</span>
-    <span class="message crit">Jan 23 20:42:11 imac sudo[1040]: test</span>
-    </div>
--->
-
+<div id="documents">
 </div>
 
 </html>
